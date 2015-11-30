@@ -368,8 +368,8 @@ lines(widths,high,lty=2,col ='red')
 ```
 
 
-
-##2c. 
+##There are two parts..
+##2c. Submitted on time with an error NaN
 ```{r}
 theta1 <- rnorm(1000,0,0.1)
 theta2 <- rnorm(1000,0,0.1)
@@ -409,4 +409,52 @@ BFr
 
 
 ```
+
+##2c. This code was written after the deadline of 11:30am in the class..
+
+```{r}
+set.seed(889)
+theta1 <- rnorm(1000,0,10)
+theta2 <- rnorm(1000,0,10)
+b0c <- extract(mod2)$beta0
+b1c <- extract(mod2)$beta1
+
+y <- crab$pa
+x <- crab$width
+
+nsim <- 4000
+r <- numeric(nsim)
+logr <- numeric(nsim)
+
+for(i in 1:nsim){
+  beta0 <- b0c[i]
+  beta1 <- b1c[i]
+  
+  theta <- invlogit(beta0+beta1*x)
+  thetac <- 1-exp(-exp(beta0+beta1*x))
+  
+  f0 <- dnorm(invlogit(beta0+beta1*22),0,10)*
+        dnorm(invlogit(beta0+beta1*28),0,10)
+  logf0 <- log(f0)
+  
+  f1 <- dnorm(1-exp(-exp(beta0+beta1*22)),0,10)*
+        dnorm(1-exp(-exp(beta0+beta1*28)),0,10)
+  logf1 <- log(f1)
+ 
+  logfyM0 <- sum(y*log(theta)+(1-y)*log(1-theta))
+  logfyM1 <- sum(y*log(thetac)+(1-y)*log(1-thetac))
+  
+  logr[i] <- logfyM0+logf0-logfyM1-logf1
+}
+
+BFr <- mean(exp(logr))
+BFr
+
+
+```
+I get a Bayes Factor of .176. Since it is less than 1. This favors CLL model. 
+
+
+
+
 
