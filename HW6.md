@@ -1,5 +1,3 @@
-# BayesHw6
-
 ---
 title: "bayeshw6"
 author: "sambed-x"
@@ -55,6 +53,7 @@ print(mod3fit,pars=c("beta0","beta1"),digits=3)
 ##1b.
 ```{r}
 # Now let's extract the coefficient draws
+par(mfrow=c(1,2))
 b0.1 <- extract(mod3fit)$beta0
 b1.1 <- extract(mod3fit)$beta1
 plot(b0.1,b1.1, main = 'Beta1 vs. Beta0')
@@ -76,7 +75,7 @@ for(i in 1:n){
 
 # Obtain the conditional means and plot them with the data
 cmean1 <- colMeans(lambdas.1)
-plot(jitter(fabric$len,amount=.1),fabric$faults,pch=16,bty="l",xlab="Length",ylab="# of Faults")
+plot(jitter(fabric$len,amount=.1),fabric$faults,pch=16,bty="l",xlab="Length",ylab="# of Faults", main ='Conditional Means/Prediciton Interval Plots')
 lines(ww,cmean1,col='blue')
 
 # Obtain 95% credible intervals for conditional means, and plot
@@ -157,13 +156,13 @@ mod5_code='
     }
     b0 ~ normal(0,.9);
     b1 ~ normal(0,.085);
-    sig ~ gamma(0.001,0.001);
+    sig ~ gamma(0.1,0.1);
   }
 '
 
 mod5_data = with(fabric,list(n=nrow(fabric),length=fabric$len, faults=fabric$faults))
 
-mod5_fit = stan(model_code=mod5_code, data=mod5_data)
+mod5_fit = stan(model_code=mod5_code, data=mod5_data,seed = 1000)
 
 print(mod5_fit,pars=c("b0","b1",'sig'),digits=3)
 ```
@@ -174,10 +173,11 @@ print(mod5_fit,pars=c("b0","b1",'sig'),digits=3)
 ```{r}
 # Now let's extract the coefficient draws
 ## Examine the fit
+par(mfrow=c(1,2))
 b0.2 <- extract(mod5_fit)$b0
 b1.2 <- extract(mod5_fit)$b1
 sig <- extract(mod5_fit)$sig
-
+plot(b0.2,b1.2, main = 'Beta1 vs. Beta0(Int. Model)')
 
 # Construct a matrix to hold the predicted means 
 # based on each MCMC draw
@@ -196,7 +196,7 @@ for(i in 1:n){
 # Obtain the conditional means and plot them with the data
 cmean2 <- colMeans(lambdas.2)
 plot(jitter(fabric$len,amount=.1),fabric$faults,pch=16,bty="l",
-     xlab="Length",ylab="Number of Faults",col='green')
+     xlab="Length",ylab="Number of Faults",main='Cond Means/PI Plots for Intercept Model')
 lines(ww,cmean2)
 
 # Obtain 95% credible intervals for conditional means, and plot
@@ -224,54 +224,17 @@ lines(ww,low.y2,lty=3,col="green")
 high.y2 <- apply(ys2,2,quantile,.975)
 lines(ww,high.y2,lty=3,col="green")
 
-############bayes1d#####################
-theta1 <- rbeta(1000,1.6,1)
-theta2 <- rbeta(1000,1,1.6)
-b0c <- extract(mod5_fit)$b0
-b1c <- extract(mod5_fit)$b1
-
-y <- fabric$faults
-x <- fabric$len
-
-nsim <- 4000
-r <- numeric(nsim)
-logr <- numeric(nsim)
-
-for(i in 1:nsim){
-  beta0 <- b0c[i]
-  beta1 <- b1c[i]
-  
-  theta <- invlogit(beta0+beta1*x)
-  thetac <- 1-exp(-exp(beta0+beta1*x))
-  
-  f0 <- dbeta(invlogit(beta0+beta1*22),1.6,1)*
-        dbeta(invlogit(beta0+beta1*28),1,1.6)
-  logf0 <- log(f0)
-  
-  f1 <- dbeta(1-exp(-exp(beta0+beta1*22)),1.6,1)*
-        dbeta(1-exp(-exp(beta0+beta1*28)),1,1.6)
-  logf1 <- log(f1)
- 
-  logfyM0 <- sum(y*log(theta)+(1-y)*log(1-theta))
-  logfyM1 <- sum(y*log(thetac)+(1-y)*log(1-thetac))
-  
-  logr[i] <- logfyM0+logf0-logfyM1-logf1
-}
-
-BFr <- mean(exp(logr))
-BFr
-
-
 ```
 
 
-Yes, adding random intercept improves the model. Our PI of the model with random intercept includes all most all data points except for one. 
+Yes, adding random intercept improves the model. Our PI of the model with random intercept includes all most all data points except for one. Although, overfiting might be of a concern here.
 
 ##2a.
 
 ```{r}
 ##EDA
 # load("C:/Users/Sapana/Desktop/R/crab.RData")
+par(mfrow=c(1,1))
 crab$pa <-ifelse(crab$satell>1,1,0)
 head(crab)
 with(crab,plot(satell~width, main = 'Satellite vs. Width'))
@@ -402,22 +365,14 @@ lines(widths,meds,col='blue')
 lines(widths,low,lty=2, col ='red')
 lines(widths,high,lty=2,col ='red')
 
-
-
 ```
 
-##2c. 
 
 
 ##2c. 
 ```{r}
-## Alternatively, use the method discussed at the end of
-## class in which we sample from the posterior of the CLL model
-
-## The posterior (beta0,beta1) values from model 1 are 
-## given in the vectors b0c and b1c.  Each are of length 4000.
-theta1 <- rbeta(1000,1.6,1)
-theta2 <- rbeta(1000,1,1.6)
+theta1 <- rnorm(1000,0,0.1)
+theta2 <- rnorm(1000,0,0.1)
 b0c <- extract(mod2)$beta0
 b1c <- extract(mod2)$beta1
 
@@ -435,12 +390,12 @@ for(i in 1:nsim){
   theta <- invlogit(beta0+beta1*x)
   thetac <- 1-exp(-exp(beta0+beta1*x))
   
-  f0 <- dbeta(invlogit(beta0+beta1*22),1.6,1)*
-        dbeta(invlogit(beta0+beta1*28),1,1.6)
+  f0 <- dbeta(invlogit(beta0+beta1*22),0,0.1)*
+        dbeta(invlogit(beta0+beta1*28),0,0.1)
   logf0 <- log(f0)
   
-  f1 <- dbeta(1-exp(-exp(beta0+beta1*22)),1.6,1)*
-        dbeta(1-exp(-exp(beta0+beta1*28)),1,1.6)
+  f1 <- dbeta(1-exp(-exp(beta0+beta1*22)),0,0.1)*
+        dbeta(1-exp(-exp(beta0+beta1*28)),0,0.1)
   logf1 <- log(f1)
  
   logfyM0 <- sum(y*log(theta)+(1-y)*log(1-theta))
@@ -454,4 +409,4 @@ BFr
 
 
 ```
-Since the bayes fator is .377 which is less than 1. This favors the CLL model. 
+
